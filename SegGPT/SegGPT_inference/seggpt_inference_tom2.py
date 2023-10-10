@@ -60,9 +60,6 @@ if __name__ == '__main__':
             new_name = os.path.join(in_dir, file.lower())
             os.rename(old_name, new_name)
 
-    input_image = os.path.join(in_dir, "input_new.jpg")
-    out_path = os.path.join(in_dir, "mask_new.png")
-
     prompt_images = []
     prompt_targets = []
     for name in sorted(glob.glob(f"{in_dir}/input_?.jpg")):
@@ -75,6 +72,21 @@ if __name__ == '__main__':
         prompt_images.append(name)
         prompt_targets.append(mask_file)
 
-    inference_image_tom(model, device, input_image, prompt_images, prompt_targets, out_path)
+    input_image = os.path.join(in_dir, "input_new.jpg")
+    out_path = os.path.join(in_dir, "mask_new.png")
+
+    if os.path.isfile(input_image):
+        print(f"Processing mask from input: {os.path.basename(input_image)} -> {os.path.basename(out_path)}")
+        inference_image_tom(model, device, input_image, prompt_images, prompt_targets, out_path)
+    else:
+        filelist = glob.glob(f"{in_dir}/input_new?.jpg")
+        if len(filelist) == 0:
+                print(f"ERROR: could not find any input_new files")
+                sys.exit(1)
+        for input_image in sorted(filelist):
+            letter = input_image[-5]
+            out_path = f"{in_dir}/mask_new{letter}.png"
+            print(f"Processing mask from input: {os.path.basename(input_image)} -> {os.path.basename(out_path)}")
+            inference_image_tom(model, device, input_image, prompt_images, prompt_targets, out_path)
     
     print('Finished.')
