@@ -3,8 +3,11 @@ import argparse
 
 import torch
 import numpy as np
+import os
+import sys
+import glob
 
-from seggpt_engine import inference_image_tom, inference_video_tom
+from seggpt_engine_tom import inference_image_tom, inference_video_tom
 import models_seggpt
 
 
@@ -18,12 +21,8 @@ def get_args_parser():
                         default='seggpt_vit_large.pth')
     parser.add_argument('--model', type=str, help='dir to ckpt',
                         default='seggpt_vit_large_patch16_input896x448')
-    parser.add_argument('--input_image', type=str, help='path to input image to be tested',
-                        default=None)
-    parser.add_argument('--input_video', type=str, help='path to input video to be tested',
-                        default=None)
-    parser.add_argument('--num_frames', type=int, help='number of prompt frames in video',
-                        default=0)
+    parser.add_argument('--in_dir', type=str, help='path to inputs',
+                        default=None, required=True)
     parser.add_argument('--prompt_image', type=str, nargs='+', help='path to prompt image',
                         default=None)
     parser.add_argument('--prompt_target', type=str, nargs='+', help='path to prompt target',
@@ -32,8 +31,6 @@ def get_args_parser():
                         choices=['instance', 'semantic'], default='instance')
     parser.add_argument('--device', type=str, help='cuda or cpu',
                         default='cuda')
-    parser.add_argument('--output_dir', type=str, help='path to output',
-                        default='./')
     return parser.parse_args()
 
 
@@ -55,21 +52,29 @@ if __name__ == '__main__':
     model = prepare_model(args.ckpt_path, args.model, args.seg_type).to(device)
     print('Model loaded.')
 
-    assert args.input_image or args.input_video and not (args.input_image and args.input_video)
-    if args.input_image is not None:
-        assert args.prompt_image is not None and args.prompt_target is not None
+    in_dir = args.in_dir
 
-        img_name = os.path.basename(args.input_image)
-        out_path = os.path.join(args.output_dir, "output_" + '.'.join(img_name.split('.')[:-1]) + '.png')
+    for file in os.listdir(in_dir):
+        if (file != file.lower()):
+            old_name = os.path.join(in_dir, file)
+            new_name = os.path.join(in_dir, file.lower())
+            os.rename(old_name, new_name)
 
-        # inference_image(model, device, args.input_image, args.prompt_image, args.prompt_target, out_path)
-        inference_image_tom(model, device, args.input_image, args.prompt_image, args.prompt_target, out_path)
+    input_image = os.path.join(in_dir, "input_new.jpg")
+    out_path = os.path.join(in_dir, "mask_new.png")
+
+    prompt_images = []
+    prompt_targets = []
+    for name in sorted(glob.glob(f"{in_dir}/input_?.jpg")):
+        letter = name[-5]
+        mask_file = f"{in_dir}/mask_{letter}.png"
+        print(f"Processing input files: {os.path.basename(name)} + {os.path.basename(mask_file)}")
+        if not os.path.isfile(mask_file):
+            print(f"ERROR: file missing {os.path.basename(mask_file)}")
+            sys.exit(1)
+        prompt_images.append(name)
+        prompt_targets.append(mask_file)
+
+    inference_image_tom(model, device, input_image, prompt_images, prompt_targets, out_path)
     
-    if args.input_video is not None:
-        assert args.prompt_target is not None and len(args.prompt_target) == 1
-        vid_name = os.path.basename(args.input_video)
-        out_path = os.path.join(args.output_dir, "output_" + '.'.join(vid_name.split('.')[:-1]) + '.mp4')
-
-        inference_video_tom(model, device, args.input_video, args.num_frames, args.prompt_image, args.prompt_target, out_path)
-
     print('Finished.')
