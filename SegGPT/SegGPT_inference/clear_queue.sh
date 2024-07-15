@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # continue on error (files will be moved to working)
-# set -e
+# set -ex
 
 # NOTE : Quote it else use array to avoid problems #
 FILES="/dropbox/segments/01_queue/*"

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # stop on error
-# set -e
+set -ex
 
 FPATH="$1"
 
@@ -23,6 +23,7 @@ mv $FPATH $OUTDIR
 cp "$WORKDIR"/mask_new*.png "$OUTDIR"/.
 cp "$WORKDIR"/result.txt "$OUTDIR"/result.txt
 
-echo "future: rm -Rf $WORKDIR"
+#echo "future: rm -Rf $WORKDIR"
+rm -Rf $WORKDIR
 
 echo "Saved results to $OUTDIR"
